@@ -1,31 +1,30 @@
 import React, { useState, useRef, useEffect } from "react";
 
-interface EditableFieldProps {
+interface EditableSelectProps {
   label: string;
   value: string;
-  type?: string;
+  options: Array<{ value: string; label: string }>;
   name: string;
   isEditing: boolean;
-  onInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelectChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
   setIsEditing: (isEditing: boolean) => void;
   onClick?: () => void;
 }
 
-export const EditableField: React.FC<EditableFieldProps> = ({
+export const EditableSelect: React.FC<EditableSelectProps> = ({
   label,
   value,
-  type = "text",
+  options,
   name,
   isEditing,
-  onInputChange,
+  onSelectChange,
   setIsEditing,
   onClick,
 }) => {
-  const ref = React.useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLSelectElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Clean up the timeout when the component unmounts
     return () => {
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
@@ -38,23 +37,26 @@ export const EditableField: React.FC<EditableFieldProps> = ({
       <strong className="text-gray-600">{label}</strong>
       <br />
       {isEditing ? (
-        <input
+        <select
           ref={ref}
-          type={type}
           name={name}
           value={value}
-          onChange={onInputChange}
+          onChange={onSelectChange}
           className="text-gray-900 w-full rounded border p-1 my-1 max-w-96"
-        />
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       ) : (
         <p
           className="text-gray-600 cursor-pointer"
           onClick={() => {
-            // Clear existing timeout to ensure it's fresh
             if (timeoutRef.current !== null) {
               clearTimeout(timeoutRef.current);
             }
-            // Set a new timeout
             timeoutRef.current = setTimeout(() => {
               if (onClick) {
                 onClick();
@@ -66,13 +68,12 @@ export const EditableField: React.FC<EditableFieldProps> = ({
               clearTimeout(timeoutRef.current);
             }
             setIsEditing(true);
-            ref.current?.focus();
             setTimeout(() => {
-              ref.current?.setSelectionRange(0, ref.current.value.length);
+              ref.current?.focus();
             }, 0);
           }}
         >
-          {value}
+          {options.find((o) => o.value === value)?.label || value}
         </p>
       )}
     </div>
