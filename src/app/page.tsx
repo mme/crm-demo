@@ -1,6 +1,8 @@
 "use client";
 
 import "@copilotkit/react-ui/styles.css";
+import "@copilotkit/react-textarea/styles.css";
+
 import { CaseDetail } from "@/components/CaseDetail";
 import CaseList from "@/components/CaseList";
 import { dummyCases } from "@/dummyData";
