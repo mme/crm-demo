@@ -15,6 +15,7 @@ import { Email } from "@/types/email";
 import { Action } from "@/types/action";
 import { EditableSelect } from "./EditableSelect";
 import { dummyAccounts, dummyUsers } from "@/dummyData";
+import { useCopilotAction } from "@copilotkit/react-core";
 
 interface CaseDetailProps {
   caseItem: Case;
@@ -33,7 +34,11 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({
   });
   const [showEmailOverlay, setShowEmailOverlay] = useState(false);
   useEffect(() => {
-    setEmail({ receiver: caseItem.email, subject: "", body: "" });
+    setEmail({
+      receiver: caseItem.email,
+      subject: `(ID: ${caseItem.id})`,
+      body: "",
+    });
     setShowEmailOverlay(false);
     setIsEditing(false);
   }, [caseItem.email]);
@@ -62,12 +67,179 @@ export const CaseDetail: React.FC<CaseDetailProps> = ({
     setNewAction({ type: "Call", details: "" });
   };
 
+  useCopilotAction({
+    name: "updateCase",
+    description: "Update the case details",
+    parameters: [
+      {
+        name: "owner",
+        type: "string",
+        enum: dummyUsers.map((owner) => owner.id),
+        description:
+          "The id of the user who owns the case. Possible users are: " +
+          JSON.stringify(dummyUsers),
+        required: false,
+      },
+      {
+        name: "phone",
+        type: "string",
+        description: "The phone number",
+        required: false,
+      },
+      {
+        name: "email",
+        type: "string",
+        description: "The email address",
+        required: false,
+      },
+      {
+        name: "name",
+        type: "string",
+        description: "The name of the contact that reported the case",
+        required: false,
+      },
+      {
+        name: "account",
+        type: "string",
+        enum: dummyAccounts.map((account) => account.id),
+        description:
+          "The id of the account associated with the case. Possible accounts are: " +
+          JSON.stringify(dummyAccounts),
+        required: false,
+      },
+      {
+        name: "status",
+        type: "string",
+        enum: ["Open", "Closed", "Pending", "Escalated"],
+        description: "The status of the case",
+        required: false,
+      },
+      {
+        name: "priority",
+        type: "string",
+        enum: ["Low", "Medium", "High"],
+        description: "The priority of the case",
+        required: false,
+      },
+      {
+        name: "type",
+        type: "string",
+        enum: ["Problem", "Incident", "Question", "Request"],
+        description: "The type of the case",
+        required: false,
+      },
+      {
+        name: "origin",
+        type: "string",
+        enum: ["Email", "Phone", "Chat", "Portal"],
+        description: "The origin of the case",
+        required: false,
+      },
+      {
+        name: "reason",
+        type: "string",
+        description: "The reason for the case",
+        required: false,
+      },
+      {
+        name: "notes",
+        type: "string",
+        description: "The notes for the case",
+        required: false,
+      },
+    ],
+    render: "Updating case details...",
+    handler: (params) => {
+      const updatedCase = { ...caseItem };
+      for (const key in params) {
+        if ((params as any)[key]) {
+          if (key === "owner") {
+            const owner = dummyUsers.find((u) => u.id === params[key]);
+            if (owner) {
+              updatedCase.owner = owner;
+            }
+          } else if (key === "account") {
+            const account = dummyAccounts.find((a) => a.id === params[key]);
+            if (account) {
+              updatedCase.account = account;
+            }
+          } else {
+            (updatedCase as any)[key] = (params as any)[key];
+          }
+        }
+      }
+      onUpdateCase(updatedCase);
+    },
+  });
+
+  useCopilotAction({
+    name: "logActions",
+    description: "Log actions",
+    parameters: [
+      {
+        name: "actions",
+        type: "object[]",
+        attributes: [
+          {
+            name: "type",
+            type: "string",
+            enum: ["Call", "Email", "Meeting", "Task"],
+          },
+          {
+            name: "details",
+            type: "string",
+          },
+        ],
+      },
+    ],
+    handler: ({ actions }) => {
+      onUpdateCase({
+        ...caseItem,
+        actions: [...caseItem.actions, ...actions],
+      });
+    },
+  });
+
+  useCopilotAction({
+    name: "draftEmail",
+    description:
+      "Draft an email to the main contact of the account (the name property in the case)",
+    parameters: [
+      {
+        name: "subject",
+      },
+      {
+        name: "body",
+      },
+    ],
+    handler: ({ subject, body }) => {
+      setEmail({ receiver: caseItem.email, subject, body });
+      setShowEmailOverlay(true);
+    },
+  });
+
   return (
     <div className="p-6">
       {showEmailOverlay && (
         <EmailOverlay
           email={email}
-          onSend={() => setShowEmailOverlay(false)}
+          caseItem={caseItem}
+          onSend={() => {
+            setShowEmailOverlay(false);
+            onUpdateCase({
+              ...caseItem,
+              actions: [
+                ...caseItem.actions,
+                {
+                  type: "Email",
+                  details: `Subject: ${email.subject} Body: ${email.body}`,
+                },
+              ],
+            });
+          }}
+          onCancel={() => {
+            setShowEmailOverlay(false);
+          }}
           updateEmail={setEmail}
         />
       )}

@@ -10,5 +10,4 @@ In case of a problem, we can offer the following discounts:
   - 15% for Silver Tier
   - 20% for Gold Tier
   - 25% for Platinum Tier
-
 `;
